@@ -249,24 +249,28 @@ while True:
                 throttle = 1.0 / (1.0 + np.exp(-throt_raw)) # Sigmoid
                 obstacle = 1.0 / (1.0 + np.exp(-obst_raw))  # Sigmoid
                 
-                # Translate to vehicle controls (Steering-only mode for continuous track driving)
-                # Keep straight lines super slow (BASE_SPEED), but boost turning power to at least 110
-                # and stop inner wheel completely to pivot sharply without overshooting.
-                if steering < -0.08:
-                    target_dir = LEFT
-                    target_speed = max(110, BASE_SPEED + 40)  # Safe pivot speed for outer wheel
-                    target_alpha = target_speed               # Stop inner wheel completely (speed - alpha = 0)
-                    status_msg = f"Steering LEFT ({steering:.2f})"
-                elif steering > 0.08:
-                    target_dir = RIGHT
-                    target_speed = max(110, BASE_SPEED + 40)  # Safe pivot speed for outer wheel
-                    target_alpha = target_speed               # Stop inner wheel completely (speed - alpha = 0)
-                    status_msg = f"Steering RIGHT ({steering:.2f})"
+                # Translate to vehicle controls using Proportional Control to prevent tail-wagging / oscillation
+                STEER_DEADZONE = 0.05
+                steer_val = abs(steering)
+                
+                if steer_val > STEER_DEADZONE:
+                    target_dir = LEFT if steering < 0 else RIGHT
+                    
+                    # Proportional speed boost for outer wheel: ranges from BASE_SPEED up to BASE_SPEED + 45
+                    target_speed = int(BASE_SPEED + (steer_val * 45))
+                    target_speed = min(130, target_speed)  # Cap maximum speed for safety
+                    
+                    # Proportional alpha (wheel speed difference) based on steering magnitude
+                    # As steering approaches 1.0, alpha approaches target_speed (inner wheel stops)
+                    target_alpha = int(steer_val * target_speed)
+                    
+                    dir_name = "LEFT" if target_dir == LEFT else "RIGHT"
+                    status_msg = f"Steering {dir_name} (S:{steering:+.2f} | Spd:{target_speed} | Alpha:{target_alpha})"
                 else:
                     target_dir = STRAIGHT
                     target_speed = BASE_SPEED
                     target_alpha = 0
-                    status_msg = "Steering STRAIGHT"
+                    status_msg = f"Steering STRAIGHT (S:{steering:+.2f})"
                 
                 # --- UDP AUTOMATIC TRANSMISSION ---
                 now = time.time()

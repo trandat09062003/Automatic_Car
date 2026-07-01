@@ -13,10 +13,10 @@ dataset/
 loi/
 dataset_loi/
 
-# Large Model Checkpoints (Only keep baseline model)
-models/best_model.keras
-models/best_model_quantized.tflite
-models/best_model_quantized_io8.tflite
+# Large Model Checkpoints
+models/*.keras
+models/*.tflite
+models/*.h
 *.npz
 
 # Operating System Files
