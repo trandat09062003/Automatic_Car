@@ -13,10 +13,7 @@ dataset/
 loi/
 dataset_loi/
 
-# Large Model Checkpoints
-models/*.keras
-models/*.tflite
-models/*.h
+# Dataset archives
 *.npz
 
 # Operating System Files
