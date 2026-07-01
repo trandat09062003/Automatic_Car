@@ -1,0 +1,24 @@
+# Byte-compiled / optimized / DLL files
+__pycache__/
+*.py[cod]
+*$py.class
+
+# Caches and logs
+.pytest_cache/
+.ipynb_checkpoints/
+*.log
+
+# Large Datasets
+dataset/
+loi/
+dataset_loi/
+
+# Large Model Checkpoints (Only keep baseline model)
+models/best_model.keras
+models/best_model_quantized.tflite
+models/best_model_quantized_io8.tflite
+*.npz
+
+# Operating System Files
+.DS_Store
+Thumbs.db

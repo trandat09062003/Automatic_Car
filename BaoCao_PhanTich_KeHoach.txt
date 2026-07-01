@@ -1,0 +1,86 @@
+================================================================================
+          DỰ ÁN TINYNAV - XE TỰ HÀNH BÁM LÀN KHÉP KÍN (ESP32-S3 & CUSTOM CNN)
+                    TỔNG HỢP TOÀN BỘ KẾ HOẠCH, MỤC TIÊU & TIẾN ĐỘ
+================================================================================
+
+I. MỤC TIÊU DỰ ÁN (PROJECT GOALS)
+--------------------------------------------------------------------------------
+1. Nhiệm vụ chính: Xe robot tự hành di chuyển liên tục, mượt mà và chuẩn xác bên 
+   trong vệt đường màu xám (hoặc màu nâu) trên sa hình, không lấn sang phần nền 
+   xanh đậm và tuyệt đối không chạy lệch ra ngoài sa hình (phần nền gạch trắng).
+2. Yêu cầu vận hành:
+   - Tốc độ di chuyển đi thẳng: Cực kỳ chậm rãi (bò từ từ) để AI có đủ thời gian 
+     nhận diện, phản hồi hình ảnh qua WiFi và tăng tính an toàn.
+   - Cơ chế ôm cua: Khi gặp khúc cua, xe phải cua gấp dứt khoát (cua xoáy trục - 
+     Pivot Turn), không bị trôi rộng bánh ra ngoài vạch biên.
+   - Vận hành thông minh: Không cần nạp lại code vi điều khiển khi đổi mạng WiFi.
+
+II. KIẾN TRÚC KỸ THUẬT & GIẢI PHÁP (TECHNICAL ARCHITECTURE)
+--------------------------------------------------------------------------------
+1. Khung phần cứng (Hardware):
+   - Mạch điều khiển: ESP32-S3 (hỗ trợ camera OV2640 truyền ảnh stream qua UDP).
+   - Động cơ: 2 bánh chủ động 2WD điều khiển bằng cầu H qua 2 chân PWM độc lập.
+2. Firmware nhúng (ESP32-S3 C++ Arduino):
+   - Nhận ảnh thô từ camera OV2640 và phát stream gói tin JPEG qua giao thức UDP 
+     lên cổng 3000 của Laptop.
+   - Nhận lệnh điều khiển hướng lái từ Laptop gửi xuống qua cổng 3001 và điều khiển 
+     PWM động cơ tương ứng.
+   - Cơ chế Auto-Discovery: Xe nhận gói tin Heartbeat quảng bá ("HB") từ Laptop để 
+     tự học địa chỉ IP của Laptop, giúp chuyển mạng WiFi linh hoạt mà không cần sửa 
+     IP cứng trong code Arduino.
+3. Phần mềm xử lý & Bộ não AI (Laptop Python/Colab):
+   - Loại bỏ nhiễu ngoại cảnh (Anti-Overfitting): Cắt bỏ 40% phần trên của ảnh camera 
+     (loại bỏ ghế sofa, thùng các-tông, chân bàn...) chỉ giữ lại 60% nửa dưới chứa vệt 
+     đường sa hình sát mũi xe (ROI Crop), sau đó co ảnh về 128x128 grayscale.
+   - Mô hình mạng CNN: Single-Branch Sequential CNN (dưới 45,000 tham số) tối ưu 
+     cho ESP32-S3, cho ra 3 nhãn đầu ra (Góc lái Steer, Ga Throttle, Vật cản Obstacle).
+   - Kích đề tự động (Kick-start): Khi xe đang đứng yên và nhận lệnh đi thẳng, 
+     phần mềm tự động phát xung lực 130 trong 0.12s để vượt qua ma sát tĩnh của bánh 
+     xe, sau đó trả về tốc độ bò chậm (80-100) để xe đi tiếp mượt mà.
+   - Cua xoáy trục (Pivot Turn): Khi AI ra lệnh rẽ, bánh phía trong cua dừng hẳn (0 PWM) 
+     và bánh ngoài tăng tốc (120-135 PWM) tạo moment xoắn xoay xe tại chỗ rất nhanh.
+
+III. TIẾN ĐỘ THỰC TẾ & TRẠNG THÁI HIỆN TẠI (PROJECT STATUS)
+--------------------------------------------------------------------------------
+[x] Thiết kế mô hình CNN: Hoàn thành cấu trúc Tiny CNN siêu nhẹ, lượng tử hóa INT8.
+[x] Firmware Arduino: Hoàn thành, đã dọn sạch các log lỗi định dạng lệnh "HB" và 
+    loại bỏ bù ga cơ khí cứng để động cơ khởi chạy tự nhiên.
+[x] Code thu thập dữ liệu (collect_data.py): Hoàn thành tích hợp tự động dò tìm IP xe 
+    (UDP Broadcast) và cơ chế tự động cắt ảnh ROI khi lưu.
+[x] Thu thập & Dọn dẹp Dataset: 
+    - Đã thu thập thành công 3,456 ảnh lái tay chất lượng cao.
+    - Đã chạy chương trình clean_dataset.py quét sạch 100% ảnh lỗi truyền dẫn byte, 
+      dữ liệu đầu vào đạt độ sạch 100%.
+    - Đã đóng gói thành công bộ dữ liệu vào tệp "dataset/preprocessed_data.npz".
+[x] File hỗ trợ Google Colab: Hoàn thành tạo file "Colab_Training_TinyNav.ipynb" 
+    hỗ trợ nạp dữ liệu từ máy tính lên và tự động tải model về khi train xong GPU.
+[/] Huấn luyện mô hình (Training):
+    - Đang tiến hành huấn luyện mô hình mới trên CPU cục bộ.
+    - Sai số góc lái (steer_mae) đang giảm rất tốt xuống mức ~0.27 (chứng minh việc 
+      cắt bỏ hậu cảnh nhiễu giúp AI học cực kỳ chuẩn xác hướng lái).
+[ ] Vận hành tự lái: Code autonomous_drive.py đã sẵn sàng chờ mô hình mới để chạy.
+
+IV. HƯỚNG DẪN VẬN HÀNH NHANH (QUICK START GUIDE)
+--------------------------------------------------------------------------------
+Bước 1: Huấn luyện mô hình để lấy file "best_model.keras"
+   - Cách A (Local CPU): Chờ chương trình python notebooks/train_model.py chạy xong.
+   - Cách B (Colab GPU - Khuyên dùng vì nhanh gấp 20 lần): Tải file Colab_Training_TinyNav.ipynb 
+     lên Google Colab, chuyển Runtime sang T4 GPU, bấm chạy và upload 2 file 
+     "preprocessed_data.npz" (trong dataset/) và "model_baseline.keras" (trong models/) lên.
+     Tải file "best_model.keras" kết quả về và copy vào thư mục "models/" trên laptop.
+
+Bước 2: Lượng tử hóa mô hình
+   - Chạy lệnh sau để chuyển mô hình sang TFLite lượng tử hóa số nguyên 8-bit:
+     python notebooks/quantize_model.py
+
+Bước 3: Chạy tự lái (Auto-Pilot)
+   - Đặt xe lên vệt sa hình màu xám. Bật nguồn xe và mở Serial Monitor xem xe đã báo 
+     kết nối WiFi thành công.
+   - Chạy lệnh tự lái trên máy tính:
+     python autonomous_drive.py
+   - Click chọn màn hình camera HUD, nhấn PHÍM CÁCH (Space) để chuyển sang chế độ 
+     "AUTO-PILOT ACTIVE".
+   - (Tùy chọn) Bấm phím "+" hoặc "-" để tinh chỉnh tốc độ đi thẳng của xe cho mượt 
+     nhất với địa hình thực tế của nền nhà bạn.
+
+================================================================================
